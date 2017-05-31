@@ -35,17 +35,22 @@ object JnrTest {
 
     val kernel32 = LibraryLoader.create(classOf[Kernel32]).load("kernel32")
     val string = "abcdefg"
-    val hmem = kernel32.GlobalAlloc(0x42, string.length + 1)
+    val GMEM_MOVEABLE=0x2
+    val GMEM_ZEROINIT=0x40
+    val hmem = kernel32.GlobalAlloc(GMEM_MOVEABLE, string.length + 1)
     val ptr = kernel32.GlobalLock(hmem)
 
     ptr.putString(0, string, string.length, StandardCharsets.US_ASCII)
+
+    kernel32.GlobalUnlock(hmem)
+
     /*println(ptr.getByte(0))
     println(ptr.getByte(1))
     println(ptr.putByte(0, 36))
     println(ptr.getByte(0))
     println(ptr.getByte(1))*/
     println(ptr.address())
-    kernel32.GlobalUnlock(hmem)
+
 
     println(user32.OpenClipboard(null))//Pointer.wrap(runtime, 0)))
     //println(user32.EmptyClipboard())
@@ -53,10 +58,17 @@ object JnrTest {
     println(user32.GetClipboardData(1))
     //println(user32.IsClipboardFormatAvailable(1))
     println(user32.EmptyClipboard())
-    println(user32.SetClipboardData(1, ptr))// Pointer.wrap(runtime, ByteBuffer.wrap("asdf".getBytes))))
-    println(user32.GetClipboardData(1))
+
+    println(user32.SetClipboardData(1, hmem))//ptr.address() /*WHAT?!?*/))// Pointer.wrap(runtime, ByteBuffer.wrap("asdf".getBytes))))
+
     println(user32.CloseClipboard())
 
+    println(user32.OpenClipboard(null))//Pointer.wrap(runtime, 0)))
+    //println(user32.EmptyClipboard())
+    println("clipboard:")
+    println(user32.GetClipboardData(1))
+    println(user32.CloseClipboard())
+    //println(kernel32.GlobalFree(hmem))
 
   }
 
@@ -71,11 +83,13 @@ object JnrTest {
   trait Kernel32 {
     def GetLastError(): String
 
-    def GlobalAlloc(flags: Int, size: Long@size_t): Pointer
+    def GlobalAlloc(flags: Int, size: Long@size_t): Long
 
-    def GlobalLock(hMem: Pointer): Pointer
+    def GlobalLock(hMem: Long): Pointer
 
-    def GlobalUnlock(hMem: Pointer): Int
+    def GlobalUnlock(hMem: Long): Int
+
+    def GlobalFree(hMem: Long): Pointer
   }
 
   trait User32 {
@@ -88,7 +102,7 @@ object JnrTest {
 
     def EmptyClipboard(): Int
 
-    def SetClipboardData(format: Int , data: Pointer): Pointer
+    def SetClipboardData(format: Int , data: Long): Pointer
 
     def CloseClipboard(): Int
   }
