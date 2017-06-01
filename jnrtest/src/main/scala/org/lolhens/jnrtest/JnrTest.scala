@@ -1,10 +1,10 @@
 package org.lolhens.jnrtest
 
-import java.nio.charset.{Charset, StandardCharsets}
-import java.nio.{Buffer, ByteBuffer}
+import java.nio.charset.StandardCharsets
 
-import jnr.ffi.types.{pid_t, size_t, u_int32_t}
+import jnr.ffi.types.{pid_t, size_t}
 import jnr.ffi.{LibraryLoader, Pointer, Runtime}
+import scodec.bits.ByteVector
 
 /**
   * Created by pierr on 30.05.2017.
@@ -35,35 +35,36 @@ object JnrTest {
 
     val kernel32 = LibraryLoader.create(classOf[Kernel32]).load("kernel32")
     val string = "abcdefg"
-    val GMEM_MOVEABLE=0x2
-    val GMEM_ZEROINIT=0x40
-    val hmem = kernel32.GlobalAlloc(GMEM_MOVEABLE, string.length + 1)
+
+    val hmem = kernel32.allocateGlobal(ByteVector.encodeAscii(string).toOption.get)
+
+    /*val hmem = kernel32.GlobalAlloc(GMEM_MOVEABLE, string.length + 1)
     val ptr = kernel32.GlobalLock(hmem)
 
     ptr.putString(0, string, string.length, StandardCharsets.US_ASCII)
 
     kernel32.GlobalUnlock(hmem)
-
+*/
     /*println(ptr.getByte(0))
     println(ptr.getByte(1))
     println(ptr.putByte(0, 36))
     println(ptr.getByte(0))
     println(ptr.getByte(1))*/
-    println(ptr.address())
+    //println(ptr.address())
 
 
-    println(user32.OpenClipboard(null))//Pointer.wrap(runtime, 0)))
+    println(user32.OpenClipboard(null)) //Pointer.wrap(runtime, 0)))
     //println(user32.EmptyClipboard())
     println("clipboard:")
     println(user32.GetClipboardData(1))
     //println(user32.IsClipboardFormatAvailable(1))
     println(user32.EmptyClipboard())
 
-    println(user32.SetClipboardData(1, hmem))//ptr.address() /*WHAT?!?*/))// Pointer.wrap(runtime, ByteBuffer.wrap("asdf".getBytes))))
+    println(user32.SetClipboardData(1, hmem)) //ptr.address() /*WHAT?!?*/))// Pointer.wrap(runtime, ByteBuffer.wrap("asdf".getBytes))))
 
     println(user32.CloseClipboard())
 
-    println(user32.OpenClipboard(null))//Pointer.wrap(runtime, 0)))
+    println(user32.OpenClipboard(null)) //Pointer.wrap(runtime, 0)))
     //println(user32.EmptyClipboard())
     println("clipboard:")
     println(user32.GetClipboardData(1))
@@ -80,16 +81,29 @@ object JnrTest {
     def getlogin: String
   }
 
+  case class Handle(address: Long) extends AnyVal
+
+  val GMEM_MOVEABLE = 0x02
+  val GMEM_ZEROINIT = 0x40
+
   trait Kernel32 {
+    def allocateGlobal(data: ByteVector): Handle = {
+      val handle = GlobalAlloc(GMEM_MOVEABLE, data.size + 1)
+      val pointer = GlobalLock(handle)
+      pointer.put(0L, data.toArray, 0, data.size.toInt)
+      GlobalUnlock(handle)
+      handle
+    }
+
     def GetLastError(): String
 
-    def GlobalAlloc(flags: Int, size: Long@size_t): Long
+    def GlobalAlloc(flags: Int, size: Long@size_t): Handle
 
-    def GlobalLock(hMem: Long): Pointer
+    def GlobalLock(handle: Handle): Pointer
 
-    def GlobalUnlock(hMem: Long): Int
+    def GlobalUnlock(handle: Handle): Int
 
-    def GlobalFree(hMem: Long): Pointer
+    def GlobalFree(handle: Handle): Pointer
   }
 
   trait User32 {
@@ -102,7 +116,9 @@ object JnrTest {
 
     def EmptyClipboard(): Int
 
-    def SetClipboardData(format: Int , data: Long): Pointer
+    def SetClipboardData(format: Int, handle: Handle): Pointer
+
+    //def SetClipboardData(format: Int, string: String): Unit = SetClipboardData(format, )
 
     def CloseClipboard(): Int
   }

@@ -1,5 +1,7 @@
 package org.lolhens.jnrtest
 
+import scala.reflect.macros.whitebox
+
 /**
   * Created by pierr on 31.05.2017.
   */

@@ -25,11 +25,24 @@ lazy val root = project.in(file("."))
   .settings(publishArtifact := false)
   .aggregate(jnrtest)
 
+lazy val macros = project.in(file("macros"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % "2.12.2",
+      "org.typelevel" %% "cats" % "0.9.0",
+      "org.scodec" %% "scodec-bits" % "1.1.4"
+    )
+  )
+  .settings(settings: _*)
+
 lazy val jnrtest = project.in(file("jnrtest"))
   .settings(
     libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % "2.12.2",
       "org.typelevel" %% "cats" % "0.9.0",
+      "org.scodec" %% "scodec-bits" % "1.1.4",
       "com.github.jnr" % "jnr-ffi" % "2.1.5"
     )
   )
   .settings(settings: _*)
+  .dependsOn(macros)
